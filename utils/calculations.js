@@ -144,13 +144,15 @@ export function designVehicularOrPedestrian(input) {
       mediumLightPedestrianTable.rows.at(-1);
     const band = cbrBand(cbr, "catalog");
     const capacity = Math.max(eea, 500_000);
+    const lowCbrImprovement = cbr < 2 ? 150 : 0;
+    const catalogSubbase = cbr < 2 ? Math.max(100, row.cbr[band] - 30) : row.cbr[band];
     alternatives = [
       makeAlternative("Catálogo mínimo", {
         paver: row.paver,
         sandBed: row.sandBed,
         base: row.base,
-        subbase: row.cbr[band],
-        improvement: 0,
+        subbase: catalogSubbase,
+        improvement: lowCbrImprovement,
         baseType: "granular",
         demand: eea,
         capacity,
@@ -160,8 +162,8 @@ export function designVehicularOrPedestrian(input) {
         paver: row.paver,
         sandBed: row.sandBed,
         base: row.base + 20,
-        subbase: row.cbr[band],
-        improvement: 0,
+        subbase: catalogSubbase,
+        improvement: lowCbrImprovement,
         baseType: "granular",
         demand: eea,
         capacity: capacity * 1.08,
@@ -171,8 +173,8 @@ export function designVehicularOrPedestrian(input) {
         paver: row.paver,
         sandBed: row.sandBed,
         base: row.base + 40,
-        subbase: row.cbr[band],
-        improvement: 0,
+        subbase: catalogSubbase,
+        improvement: lowCbrImprovement,
         baseType: "granular",
         demand: eea,
         capacity: capacity * 1.12,
@@ -182,8 +184,8 @@ export function designVehicularOrPedestrian(input) {
         paver: row.paver,
         sandBed: row.sandBed,
         base: row.base,
-        subbase: row.cbr[band] + 30,
-        improvement: 0,
+        subbase: catalogSubbase + 30,
+        improvement: lowCbrImprovement,
         baseType: "granular",
         demand: eea,
         capacity: capacity * 1.05,
@@ -193,8 +195,8 @@ export function designVehicularOrPedestrian(input) {
         paver: row.paver + 20,
         sandBed: row.sandBed,
         base: row.base,
-        subbase: row.cbr[band],
-        improvement: 0,
+        subbase: catalogSubbase,
+        improvement: lowCbrImprovement,
         baseType: "granular",
         demand: eea,
         capacity: capacity * 1.06,
@@ -205,7 +207,7 @@ export function designVehicularOrPedestrian(input) {
         sandBed: row.sandBed,
         base: row.base,
         subbase: Math.max(100, row.cbr[band] - 30),
-        improvement: 150,
+        improvement: Math.max(150, lowCbrImprovement),
         baseType: "granular",
         demand: eea,
         capacity: capacity * 1.15,
@@ -217,12 +219,16 @@ export function designVehicularOrPedestrian(input) {
       sandBed: row.sandBed,
       base: row.base,
       baseLabel: `${row.base} base granular`,
-      subbase: row.cbr[band],
-      improvement: cbr < 2 ? "Requiere criterio del proyectista" : 0,
+      subbase: catalogSubbase,
+      improvement: lowCbrImprovement,
       method: "Catálogo medio, liviano y peatonal - Tabla 5.8",
       status: validationFlags.verified,
     };
     memory.push(`Se usa Tabla 5.8 para categoría ${row.category} y CBR de catálogo ${band}%.`);
+    if (cbr < 2) {
+      memory.push("CBR < 2%: se incorpora mejoramiento de subrasante en las alternativas peatonales y se mantiene advertencia de criterio del proyectista.");
+      warnings.push("CBR < 2%: se activa mejoramiento de subrasante tambien en pavimento peatonal.");
+    }
   }
 
   const selected = selectEconomicAlternative(alternatives);

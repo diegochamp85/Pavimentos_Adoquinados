@@ -89,6 +89,8 @@ Calcula ejes equivalentes acumulados, clasifica el nivel de transito y seleccion
 
 Permite uso peatonal puro o presencia eventual de vehiculos de mantenimiento/emergencia. Usa catalogos de bajo nivel de solicitacion.
 
+Cuando el CBR de subrasante es menor a 2%, el aplicativo activa mejoramiento de subrasante tambien en pavimentos peatonales y mantiene la advertencia de revision por criterio del proyectista.
+
 ### Portuario
 
 Calcula solicitacion equivalente tipo SEWL, dano relativo, pasadas de diseno y alternativas con base granular equivalente o base tratada con cemento.
