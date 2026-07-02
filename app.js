@@ -108,16 +108,19 @@ function formTemplate(type) {
 function costFields() {
   return `
     <div class="formGroup">
-      <strong>Indices economicos relativos</strong>
-      <p>Valores editables para comparar alternativas. No son precios de obra; use costos locales para ranking economico real.</p>
+      <strong>Costos unitarios configurables</strong>
+      <p>Ingrese precios reales de mercado para estimar costo por m2 y costo total. Si no dispone de precios, puede dejar los valores de referencia y usarlos solo como comparacion preliminar.</p>
     </div>
-    ${field("Adoquin", "costPaver", "number", 1.8, "indice/mm", "Peso economico relativo por mm de adoquin.")}
-    ${field("Arena", "costSand", "number", 0.45, "indice/mm", "Peso economico relativo por mm de cama de arena.")}
-    ${field("Base granular", "costGranularBase", "number", 0.85, "indice/mm", "Peso economico relativo por mm de base granular.")}
-    ${field("Base cemento", "costCementBase", "number", 1.25, "indice/mm", "Peso economico relativo por mm de base tratada con cemento.")}
-    ${field("Base asfalto", "costAsphaltBase", "number", 1.45, "indice/mm", "Peso economico relativo por mm de base tratada con asfalto.")}
-    ${field("Subbase", "costSubbase", "number", 0.6, "indice/mm", "Peso economico relativo por mm de subbase.")}
-    ${field("Mejoramiento", "costImprovement", "number", 0.4, "indice/mm", "Peso economico relativo por mm de mejoramiento de subrasante.")}
+    ${field("Area del proyecto", "projectArea", "number", 1000, "m2", "Area sobre la cual se estima el costo total de materiales. No afecta el diseno estructural.")}
+    ${field("Adoquin", "costPaver", "number", 24.5, "$/m2", "Precio instalado o de suministro del adoquin por metro cuadrado.")}
+    ${field("Espesor precio adoquin", "paverPriceThickness", "number", 60, "mm", "Espesor asociado al precio unitario del adoquin. El costo se escala si una alternativa usa adoquin mas grueso.")}
+    ${field("Arena", "costSand", "number", 18, "$/m3", "Costo unitario de cama de arena por metro cubico.")}
+    ${field("Base granular", "costGranularBase", "number", 42, "$/m3", "Costo unitario de base granular por metro cubico.")}
+    ${field("Base estabilizada", "costCementBase", "number", 68, "$/m3", "Costo unitario de base tratada con cemento por metro cubico.")}
+    ${field("Asfalto", "costAsphaltBase", "number", 145, "$/ton", "Costo unitario de mezcla asfaltica por tonelada. Se usa densidad editable para convertir espesor a toneladas.")}
+    ${field("Densidad asfalto", "asphaltDensity", "number", 2.35, "ton/m3", "Densidad adoptada para convertir volumen de base asfaltica a toneladas.")}
+    ${field("Subbase", "costSubbase", "number", 32, "$/m3", "Costo unitario de subbase por metro cubico.")}
+    ${field("Mejoramiento", "costImprovement", "number", 22, "$/m3", "Costo unitario de mejoramiento de subrasante por metro cubico.")}
   `;
 }
 
@@ -169,7 +172,9 @@ function renderResult(result) {
     ${metric("Solicitacion", formatNumber(result.eea, 1), result.type === "aeroportuario" ? "salidas equivalentes preliminares" : "EEA / dano equivalente")}
     ${metric("Clasificacion", `${result.traffic.name} ${result.traffic.category ?? ""}`, "Nivel de solicitacion")}
     ${metric("Cumplimiento", result.verification?.complies ? "Cumple" : "Validar", result.verification?.note ?? "Sin verificacion")}
-    ${metric("Alternativa optima", result.selectedAlternative?.name ?? "--", "Menor indice economico que cumple")}
+    ${metric("Alternativa optima", result.selectedAlternative?.name ?? "--", "Menor costo estimado que cumple")}
+    ${metric("Costo estimado", money(result.selectedAlternative?.costPerM2 ?? 0), "Materiales por m2")}
+    ${metric("Costo total", money(result.selectedAlternative?.totalCost ?? 0), `${formatNumber(result.costs?.area ?? 0, 0)} m2`)}
   `;
   document.querySelector("#layersTable").innerHTML = layersTable(result);
   document.querySelector("#alternativesTable").innerHTML = alternativesTable(result);
@@ -267,7 +272,8 @@ function alternativesTable(result) {
       <td>${alt.layers.subbase || 0} mm</td>
       <td>${alt.layers.improvement || 0} mm</td>
       <td><strong>${alt.thickness} mm</strong></td>
-      <td>${alt.costIndex}</td>
+      <td>${money(alt.costPerM2)}</td>
+      <td>${money(alt.totalCost)}</td>
       <td>${(alt.utilization * 100).toFixed(1)}%</td>
       <td><span class="status ${alt.reviewRequired ? "review" : alt.pending ? "pending" : alt.complies ? "ok" : "bad"}">${alt.reviewRequired ? "Preverificado" : alt.pending ? "Pendiente" : alt.complies ? "Cumple" : "No cumple"}</span></td>
     </tr>`).join("");
@@ -364,7 +370,7 @@ function renderAlternativesChart(result) {
     data: {
       datasets: result.alternatives.map((alt, index) => ({
         label: alt.name,
-        data: [{ x: alt.costIndex, y: alt.utilization * 100, r: Math.max(4, Math.min(11, alt.thickness / 90)) }],
+        data: [{ x: alt.costPerM2, y: alt.utilization * 100, r: Math.max(4, Math.min(11, alt.thickness / 90)) }],
         backgroundColor: alt.name === result.selectedAlternative?.name ? "#0f766e" : chartPalette(index),
         borderColor: "#111827",
         borderWidth: alt.name === result.selectedAlternative?.name ? 2 : 1,
@@ -402,8 +408,8 @@ function renderUtilizationChart(result) {
         },
         {
           type: "line",
-          label: "Indice economico",
-          data: result.alternatives.map((alt) => alt.costIndex),
+          label: "Costo por m2",
+          data: result.alternatives.map((alt) => alt.costPerM2),
           borderColor: "#7c3aed",
           backgroundColor: "#7c3aed",
           pointRadius: 5,
@@ -411,7 +417,7 @@ function renderUtilizationChart(result) {
         },
       ],
     },
-    options: dualAxisOptions("Alternativa", "D/C (%)", "Indice economico"),
+    options: dualAxisOptions("Alternativa", "D/C (%)", "Costo ($/m2)"),
   });
 }
 
@@ -501,14 +507,18 @@ function dualAxisOptions(xTitle, yTitle, y1Title) {
 }
 
 function bubbleOptions() {
-  const options = paperOptions("Indice economico relativo", "D/C (%)", 100);
+  const options = paperOptions("Costo estimado ($/m2)", "D/C (%)", 100);
   options.scales.y.suggestedMin = 0;
   options.scales.y.suggestedMax = 125;
   options.scales.x.ticks = { maxTicksLimit: 6 };
   options.plugins.tooltip.callbacks = {
-    label: (ctx) => `${ctx.dataset.label}: indice ${ctx.raw.x}, D/C ${ctx.raw.y.toFixed(1)}%, burbuja proporcional al espesor total`,
+    label: (ctx) => `${ctx.dataset.label}: ${money(ctx.raw.x)}/m2, D/C ${ctx.raw.y.toFixed(1)}%, burbuja proporcional al espesor total`,
   };
   return options;
+}
+
+function money(value) {
+  return new Intl.NumberFormat("es-CL", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(Number(value) || 0);
 }
 
 function chartPalette(index) {

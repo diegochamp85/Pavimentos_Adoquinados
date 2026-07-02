@@ -228,7 +228,7 @@ export function designVehicularOrPedestrian(input) {
   const selected = selectEconomicAlternative(alternatives);
   if (selected) {
     layers = { ...layers, ...selected.layers };
-    memory.push(`Alternativa seleccionada: ${selected.name}, por cumplir la demanda con el menor índice económico relativo.`);
+    memory.push(`Alternativa seleccionada: ${selected.name}, por cumplir la demanda con el menor costo estimado por m2.`);
   }
 
   return {
@@ -239,12 +239,13 @@ export function designVehicularOrPedestrian(input) {
     layers,
     alternatives,
     selectedAlternative: selected,
+    costs,
     verification: buildVerification(eea, selected, "EEA"),
     series: trafficSeries({ eeDay, designLife, growthRate }),
     warnings,
     limitations: [
       "Los valores corresponden a espesores mínimos salvo la cama de arena.",
-      "La comparación económica usa índices relativos editables; no reemplaza un presupuesto de obra.",
+      "La comparacion economica usa costos unitarios configurables; no reemplaza un presupuesto detallado de obra.",
       "Se recomienda aparejo espina de pescado en superficies vehiculares.",
       manualReviewNote(),
     ],
@@ -300,13 +301,14 @@ export function designPort(input) {
     },
     alternatives,
     selectedAlternative: selected,
+    costs,
     verification: buildVerification(sewl, selected, "SEWL"),
     series: trafficSeries({ eeDay: (passes * damage) / 365 / designLife, designLife, growthRate: 0 }),
     warnings,
     limitations: [
       "Para acopio de contenedores debe validarse también la carga estática CE y Ecuación 5.1.",
       "La equivalencia SEWL se interpola desde las Tablas 5.11 y 5.12 transcritas.",
-      "La comparación económica usa índices relativos editables; no reemplaza un presupuesto de obra.",
+      "La comparacion economica usa costos unitarios configurables; no reemplaza un presupuesto detallado de obra.",
       manualReviewNote(),
     ],
     memory: [
@@ -315,7 +317,7 @@ export function designPort(input) {
       `SEWL = carga de rueda x factor dinámico x proximidad = ${sewl.toFixed(1)} kN.`,
       `Pasadas de diseño = ${formatNumber(passes)} (${(passes / 1000).toFixed(0)} x 10^3).`,
       `Espesor BGTC3 interpolado/adoptado = ${bgtc} mm.`,
-      `Alternativa seleccionada: ${selected.name}, menor índice económico relativo entre alternativas que cumplen.`,
+      `Alternativa seleccionada: ${selected.name}, menor costo estimado por m2 entre alternativas que cumplen.`,
     ],
   };
 }
@@ -417,6 +419,7 @@ export function designAirport(input) {
     },
     alternatives,
     selectedAlternative: selected,
+    costs,
     verification: {
       demand: wheelLoad,
       capacity: selected.capacity,
@@ -430,7 +433,7 @@ export function designAirport(input) {
     limitations: [
       "Resultado aeroportuario presentado como pre-verificación estructural, no como diseño final contractual.",
       "Se debe verificar tensiones, deformaciones y deflexiones admisibles con el procedimiento mecanicista del manual.",
-      "La comparación económica usa índices relativos editables; no reemplaza un presupuesto de obra.",
+      "La comparacion economica usa costos unitarios configurables; no reemplaza un presupuesto detallado de obra.",
       manualReviewNote(),
     ],
     memory: [
@@ -469,6 +472,8 @@ export function buildSensitivityCases(input) {
       complies: Boolean(scenario.verification?.complies),
       thickness: scenario.selectedAlternative?.thickness ?? 0,
       costIndex: scenario.selectedAlternative?.costIndex ?? 0,
+      costPerM2: scenario.selectedAlternative?.costPerM2 ?? 0,
+      totalCost: scenario.selectedAlternative?.totalCost ?? 0,
     };
   });
 }
@@ -522,13 +527,16 @@ function nearestIndex(values, target) {
 
 function costModel(input) {
   return {
-    paver: positive(input.costPaver, 1.8),
-    sand: positive(input.costSand, 0.45),
-    granular: positive(input.costGranularBase, 0.85),
-    cement: positive(input.costCementBase, 1.25),
-    asphalt: positive(input.costAsphaltBase, 1.45),
-    subbase: positive(input.costSubbase, 0.6),
-    improvement: positive(input.costImprovement, 0.4),
+    area: positive(input.projectArea, 1000),
+    paver: positive(input.costPaver, 24.5),
+    paverReferenceThickness: positive(input.paverPriceThickness, 60),
+    sand: positive(input.costSand, 18),
+    granular: positive(input.costGranularBase, 42),
+    cement: positive(input.costCementBase, 68),
+    asphalt: positive(input.costAsphaltBase, 145),
+    asphaltDensity: positive(input.asphaltDensity, 2.35),
+    subbase: positive(input.costSubbase, 32),
+    improvement: positive(input.costImprovement, 22),
   };
 }
 
@@ -546,20 +554,26 @@ function makeAlternative(name, params) {
     subbase: toNumber(params.subbase),
     improvement: toNumber(params.improvement),
   };
-  const baseCostKey = params.baseType === "cement" ? "cement" : params.baseType === "asphalt" ? "asphalt" : "granular";
-  const costIndex =
-    layers.paver * params.costs.paver +
-    layers.sandBed * params.costs.sand +
-    layers.base * params.costs[baseCostKey] +
-    layers.subbase * params.costs.subbase +
-    layers.improvement * params.costs.improvement;
+  const baseCost =
+    params.baseType === "asphalt"
+      ? mmToM(layers.base) * params.costs.asphaltDensity * params.costs.asphalt
+      : mmToM(layers.base) * (params.baseType === "cement" ? params.costs.cement : params.costs.granular);
+  const costPerM2 =
+    params.costs.paver * (layers.paver / params.costs.paverReferenceThickness) +
+    mmToM(layers.sandBed) * params.costs.sand +
+    baseCost +
+    mmToM(layers.subbase) * params.costs.subbase +
+    mmToM(layers.improvement) * params.costs.improvement;
+  const totalCost = costPerM2 * params.costs.area;
   const totalThickness = layers.paver + layers.sandBed + layers.base + layers.subbase + layers.improvement;
   const utilization = params.capacity > 0 ? params.demand / params.capacity : 1;
   return {
     name,
     layers,
     thickness: totalThickness,
-    costIndex: Math.round(costIndex),
+    costIndex: Number(costPerM2.toFixed(2)),
+    costPerM2: Number(costPerM2.toFixed(2)),
+    totalCost: Number(totalCost.toFixed(2)),
     demand: params.demand,
     capacity: params.capacity,
     utilization,
@@ -567,6 +581,10 @@ function makeAlternative(name, params) {
     pending: Boolean(params.pending),
     reviewRequired: Boolean(params.reviewRequired),
   };
+}
+
+function mmToM(value) {
+  return toNumber(value) / 1000;
 }
 
 function baseTypeLabel(type) {

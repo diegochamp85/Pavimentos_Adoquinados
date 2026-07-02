@@ -15,7 +15,7 @@ El sistema permite evaluar pavimentos vehiculares, peatonales, portuarios e aero
 - Verificacion de CBR y advertencias tecnicas.
 - Seleccion de espesores por capa.
 - Comparacion de alternativas estructurales.
-- Ranking multicriterio.
+- Ranking multicriterio con costo real por m2.
 - Analisis de sensibilidad.
 - Reporte tecnico PDF.
 
@@ -106,6 +106,8 @@ Entrega una pre-verificacion estructural basada en carga por rueda, MTOW y salid
 - Tabla final de espesores.
 - Alternativas verificadas por capa.
 - Alternativa recomendada.
+- Costo de materiales por m2.
+- Costo total estimado del proyecto.
 - Ranking multicriterio.
 - Analisis de sensibilidad.
 - Graficos tecnicos.
@@ -118,12 +120,29 @@ Entrega una pre-verificacion estructural basada en carga por rueda, MTOW y salid
 
 El ranking complementa la seleccion economica con cuatro criterios:
 
-- Costo relativo: 42%.
+- Costo real por m2: 42%.
 - Margen estructural: 28%.
 - Constructibilidad: 20%.
 - Riesgo tecnico: 10%.
 
-Este ranking es una ayuda comparativa. No reemplaza un presupuesto real ni la revision tecnica del proyectista.
+Este ranking es una ayuda comparativa. No reemplaza un presupuesto detallado ni la revision tecnica del proyectista.
+
+## Costos Unitarios
+
+El manual base se enfoca en diseno estructural y no entrega factores economicos. Por esa razon, el aplicativo usa una seccion independiente de costos unitarios configurables:
+
+- Area del proyecto en m2.
+- Adoquin en $/m2.
+- Espesor asociado al precio del adoquin.
+- Arena en $/m3.
+- Base granular en $/m3.
+- Base estabilizada en $/m3.
+- Asfalto en $/ton.
+- Densidad del asfalto en ton/m3.
+- Subbase en $/m3.
+- Mejoramiento de subrasante en $/m3.
+
+Con estos datos, cada alternativa reporta costo estimado por m2 y costo total de materiales. Los valores por defecto son referenciales y deben reemplazarse por precios locales reales.
 
 ## Analisis de Sensibilidad
 
@@ -174,7 +193,7 @@ El aplicativo incluye una seccion de referencias normativas y criterios asociado
 - No reemplaza el criterio del ingeniero responsable.
 - Algunas tablas, ecuaciones o rangos del manual estan marcados como pendientes de validacion manual cuando no pudieron extraerse con certeza total.
 - El modulo aeroportuario se entrega como pre-verificacion y requiere revision mecanicista final.
-- Los indices economicos son relativos y editables; no son precios de obra.
+- Los costos unitarios son configurables y deben reemplazarse por precios locales reales antes de usar el resultado como presupuesto.
 - La seleccion final debe considerar drenaje, confinamiento lateral, calidad de materiales, control constructivo y condiciones reales de servicio.
 
 ## Desarrollo y Mantenimiento

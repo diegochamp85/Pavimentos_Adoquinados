@@ -71,7 +71,7 @@ export async function exportPdf(result) {
   drawFigureCaption(doc, "Figura 2. Frontera tecnica-economica de alternativas.", 110, y + 62);
   y += 76;
   await addElementImage(doc, "#utilizationChartPanel", margin, y, 86, 58);
-  drawFigureCaption(doc, "Figura 3. Utilizacion estructural D/C y costo relativo.", margin, y + 62);
+  drawFigureCaption(doc, "Figura 3. Utilizacion estructural D/C y costo estimado por m2.", margin, y + 62);
   await addElementImage(doc, "#layerChartPanel", 110, y, 86, 58);
   drawFigureCaption(doc, "Figura 4. Composicion estratigrafica por alternativa.", 110, y + 62);
 
@@ -120,6 +120,8 @@ function drawCover(doc, result) {
     ["Solicitacion", `${formatNumber(result.verification?.demand ?? result.eea, 2)} ${result.verification?.label ?? ""}`],
     ["Alternativa recomendada", result.selectedAlternative?.name ?? "--"],
     ["Estructura total", `${result.selectedAlternative?.thickness ?? 0} mm`],
+    ["Costo materiales", `${money(result.selectedAlternative?.costPerM2 ?? 0)}/m2`],
+    ["Costo total estimado", money(result.selectedAlternative?.totalCost ?? 0)],
     ["Condicion", result.verification?.complies ? "Cumple demanda/capacidad" : "Requiere validacion adicional"],
   ], 104);
   doc.setFont("helvetica", "normal");
@@ -144,7 +146,7 @@ function drawExecutiveSummary(doc, result, y) {
   const utilization = ((result.verification?.utilization ?? 0) * 100).toFixed(1);
   const text = [
     `Se evalua el modulo ${moduleLabel(result.type)} con base en el Manual de Diseno de Pavimentos de Adoquines de Hormigon y referencias normativas complementarias.`,
-    `La alternativa recomendada es "${selected?.name ?? "--"}", con espesor total ${selected?.thickness ?? 0} mm, indice economico relativo ${selected?.costIndex ?? 0} y relacion demanda/capacidad D/C = ${utilization}%.`,
+    `La alternativa recomendada es "${selected?.name ?? "--"}", con espesor total ${selected?.thickness ?? 0} mm, costo estimado ${money(selected?.costPerM2 ?? 0)}/m2, costo total ${money(selected?.totalCost ?? 0)} y relacion demanda/capacidad D/C = ${utilization}%.`,
     `El resultado ${result.verification?.complies ? "cumple preliminarmente la demanda estructural calculada" : "requiere validacion adicional antes de adoptarse como solucion"} y debe ser revisado por un ingeniero responsable antes de uso contractual.`,
   ];
   text.forEach((line) => { y = writeWrapped(doc, line, 14, y, 182); });
@@ -155,8 +157,8 @@ function drawMethodology(doc, result, y) {
   const rows = [
     ["Clasificacion", `${result.traffic?.name ?? ""} ${result.traffic?.category ?? ""}`],
     ["Metodo aplicado", result.layers?.method ?? ""],
-    ["Criterio de seleccion", "Se filtran alternativas que cumplen D/C <= 1,0 y se selecciona la menor de indice economico relativo."],
-    ["Ranking multicriterio", "Costo relativo 42%, margen estructural 28%, constructibilidad 20% y riesgo tecnico 10%."],
+    ["Criterio de seleccion", "Se filtran alternativas que cumplen D/C <= 1,0 y se selecciona la de menor costo estimado por m2."],
+    ["Ranking multicriterio", "Costo real por m2 42%, margen estructural 28%, constructibilidad 20% y riesgo tecnico 10%."],
     ["Sensibilidad", "Se reejecuta el mismo metodo para demanda +10%, demanda +20%, CBR -20% y CBR +20%."],
   ];
   return drawKeyValueTable(doc, rows, y);
@@ -169,7 +171,7 @@ function drawDiscussion(doc, result, y) {
   const total = (result.sensitivity || []).length || 1;
   const lines = [
     `La solucion seleccionada presenta un D/C de ${((result.verification?.utilization ?? 0) * 100).toFixed(1)}%, por lo que el margen estructural disponible es ${Math.max(0, (1 - (result.verification?.utilization ?? 0)) * 100).toFixed(1)}%.`,
-    `En el ranking multicriterio, la alternativa mejor puntuada es ${ranking[0]?.alt.name ?? best?.name ?? "--"}; esta lectura complementa el criterio economico minimo y permite revisar constructibilidad y riesgo tecnico.`,
+    `En el ranking multicriterio, la alternativa mejor puntuada es ${ranking[0]?.alt.name ?? best?.name ?? "--"}; esta lectura complementa el criterio de costo minimo por m2 y permite revisar constructibilidad y riesgo tecnico.`,
     `El analisis de sensibilidad conserva cumplimiento en ${robust} de ${total} escenarios evaluados. Los escenarios no conformes deben tratarse como condicion de diseno critica o como requerimiento de validacion adicional.`,
   ];
   lines.forEach((line) => { y = writeWrapped(doc, line, 14, y, 182); });
@@ -299,8 +301,8 @@ function drawKeyValueTable(doc, rows, y) {
 }
 
 function drawAlternativesTable(doc, alternatives, y) {
-  const headers = ["Alternativa", "Adoq.", "Arena", "Base", "Subb.", "Mej.", "Total", "Ind.", "D/C", "Estado"];
-  const widths = [38, 13, 13, 22, 15, 15, 15, 13, 13, 25];
+  const headers = ["Alternativa", "Adoq.", "Arena", "Base", "Subb.", "Mej.", "Esp.", "$/m2", "$ total", "D/C", "Estado"];
+  const widths = [34, 12, 12, 20, 14, 14, 14, 15, 20, 12, 15];
   doc.setFillColor(15, 118, 110);
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold");
@@ -325,7 +327,8 @@ function drawAlternativesTable(doc, alternatives, y) {
       alt.layers.subbase || 0,
       alt.layers.improvement || 0,
       alt.thickness,
-      alt.costIndex,
+      money(alt.costPerM2),
+      money(alt.totalCost),
       `${(alt.utilization * 100).toFixed(1)}%`,
       alt.reviewRequired ? "Preverif." : alt.pending ? "Pend." : alt.complies ? "Cumple" : "No cumple",
     ];
@@ -391,6 +394,10 @@ function addFooters(doc) {
   }
 }
 
+function money(value) {
+  return new Intl.NumberFormat("es-CL", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(Number(value) || 0);
+}
+
 function rankAlternatives(result) {
   const costs = result.alternatives.map((alt) => alt.costIndex);
   const minCost = Math.min(...costs);
@@ -443,13 +450,16 @@ function labelFor(key) {
     annualDepartures: "Salidas anuales",
     mainGearWheels: "Ruedas tren principal",
     tirePressureKgCm2: "Presion neumatico aeronave",
-    costPaver: "Indice costo adoquin",
-    costSand: "Indice costo arena",
-    costGranularBase: "Indice costo base granular",
-    costCementBase: "Indice costo base cemento",
-    costAsphaltBase: "Indice costo base asfalto",
-    costSubbase: "Indice costo subbase",
-    costImprovement: "Indice costo mejoramiento",
+    projectArea: "Area de proyecto",
+    costPaver: "Costo adoquin ($/m2)",
+    paverPriceThickness: "Espesor asociado al precio de adoquin",
+    costSand: "Costo arena ($/m3)",
+    costGranularBase: "Costo base granular ($/m3)",
+    costCementBase: "Costo base estabilizada ($/m3)",
+    costAsphaltBase: "Costo asfalto ($/ton)",
+    asphaltDensity: "Densidad asfalto (ton/m3)",
+    costSubbase: "Costo subbase ($/m3)",
+    costImprovement: "Costo mejoramiento ($/m3)",
   };
   return labels[key] ?? key;
 }
