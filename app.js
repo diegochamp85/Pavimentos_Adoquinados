@@ -112,8 +112,10 @@ function costFields() {
       <p>Ingrese precios reales de mercado para estimar costo por m2 y costo total. Si no dispone de precios, puede dejar los valores de referencia y usarlos solo como comparacion preliminar.</p>
     </div>
     ${field("Area del proyecto", "projectArea", "number", 1000, "m2", "Area sobre la cual se estima el costo total de materiales. No afecta el diseno estructural.")}
-    ${field("Adoquin", "costPaver", "number", 24.5, "$/m2", "Precio instalado o de suministro del adoquin por metro cuadrado.")}
-    ${field("Espesor precio adoquin", "paverPriceThickness", "number", 60, "mm", "Espesor asociado al precio unitario del adoquin. El costo se escala si una alternativa usa adoquin mas grueso.")}
+    ${field("Adoquin 60 mm", "costPaver60", "number", 24.5, "$/m2", "Precio unitario real del adoquin de 60 mm. No modifica el espesor estructural; solo calcula costos.")}
+    ${field("Adoquin 80 mm", "costPaver80", "number", 29.5, "$/m2", "Precio unitario real del adoquin de 80 mm. Se aplica cuando la alternativa estructural usa ese espesor.")}
+    ${field("Adoquin 100 mm", "costPaver100", "number", 35, "$/m2", "Precio unitario real del adoquin de 100 mm. Se aplica a soluciones pesadas, portuarias o aeroportuarias.")}
+    ${field("Adoquin 120 mm", "costPaver120", "number", 42, "$/m2", "Precio unitario real del adoquin de 120 mm cuando una alternativa conservadora lo requiera.")}
     ${field("Arena", "costSand", "number", 18, "$/m3", "Costo unitario de cama de arena por metro cubico.")}
     ${field("Base granular", "costGranularBase", "number", 42, "$/m3", "Costo unitario de base granular por metro cubico.")}
     ${field("Base estabilizada", "costCementBase", "number", 68, "$/m3", "Costo unitario de base tratada con cemento por metro cubico.")}

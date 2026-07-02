@@ -132,8 +132,10 @@ Este ranking es una ayuda comparativa. No reemplaza un presupuesto detallado ni 
 El manual base se enfoca en diseno estructural y no entrega factores economicos. Por esa razon, el aplicativo usa una seccion independiente de costos unitarios configurables:
 
 - Area del proyecto en m2.
-- Adoquin en $/m2.
-- Espesor asociado al precio del adoquin.
+- Adoquin 60 mm en $/m2.
+- Adoquin 80 mm en $/m2.
+- Adoquin 100 mm en $/m2.
+- Adoquin 120 mm en $/m2.
 - Arena en $/m3.
 - Base granular en $/m3.
 - Base estabilizada en $/m3.
@@ -142,7 +144,7 @@ El manual base se enfoca en diseno estructural y no entrega factores economicos.
 - Subbase en $/m3.
 - Mejoramiento de subrasante en $/m3.
 
-Con estos datos, cada alternativa reporta costo estimado por m2 y costo total de materiales. Los valores por defecto son referenciales y deben reemplazarse por precios locales reales.
+Con estos datos, cada alternativa reporta costo estimado por m2 y costo total de materiales. El espesor estructural del adoquin lo determina el procedimiento de diseno; los campos de costo solo valorizan el espesor seleccionado por cada alternativa. Los valores por defecto son referenciales y deben reemplazarse por precios locales reales.
 
 ## Analisis de Sensibilidad
 

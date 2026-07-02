@@ -528,8 +528,10 @@ function nearestIndex(values, target) {
 function costModel(input) {
   return {
     area: positive(input.projectArea, 1000),
-    paver: positive(input.costPaver, 24.5),
-    paverReferenceThickness: positive(input.paverPriceThickness, 60),
+    paver60: positive(input.costPaver60, positive(input.costPaver, 24.5)),
+    paver80: positive(input.costPaver80, 29.5),
+    paver100: positive(input.costPaver100, 35),
+    paver120: positive(input.costPaver120, 42),
     sand: positive(input.costSand, 18),
     granular: positive(input.costGranularBase, 42),
     cement: positive(input.costCementBase, 68),
@@ -559,7 +561,7 @@ function makeAlternative(name, params) {
       ? mmToM(layers.base) * params.costs.asphaltDensity * params.costs.asphalt
       : mmToM(layers.base) * (params.baseType === "cement" ? params.costs.cement : params.costs.granular);
   const costPerM2 =
-    params.costs.paver * (layers.paver / params.costs.paverReferenceThickness) +
+    paverUnitCost(layers.paver, params.costs) +
     mmToM(layers.sandBed) * params.costs.sand +
     baseCost +
     mmToM(layers.subbase) * params.costs.subbase +
@@ -585,6 +587,14 @@ function makeAlternative(name, params) {
 
 function mmToM(value) {
   return toNumber(value) / 1000;
+}
+
+function paverUnitCost(thickness, costs) {
+  const t = toNumber(thickness);
+  if (t <= 60) return costs.paver60;
+  if (t <= 80) return costs.paver80;
+  if (t <= 100) return costs.paver100;
+  return costs.paver120;
 }
 
 function baseTypeLabel(type) {
