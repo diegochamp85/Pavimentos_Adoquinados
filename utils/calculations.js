@@ -135,7 +135,10 @@ export function designVehicularOrPedestrian(input) {
       status: validationFlags.verified,
     };
     memory.push(`Se adopta rango de Tabla 5.7: ${highTrafficLayerTable.ranges[idx].label}.`);
-    if (subbase === null) warnings.push("CBR < 2%: la Tabla 5.6 exige usar mejoramiento de subrasante.");
+    if (subbase === null) {
+      warnings.push("CBR < 2%: se activa mejoramiento de subrasante segun Tabla 5.5; la Tabla 5.6 no entrega subbase granular para esta condicion.");
+      memory.push(`CBR < 2%: se adopta Tabla 5.5 para subbase/mejoramiento = ${common.subbase}/${common.improvement} mm.`);
+    }
   } else {
     const category = input.type === "peatonal" ? "IV" : traffic.category;
     const row =
@@ -144,8 +147,9 @@ export function designVehicularOrPedestrian(input) {
       mediumLightPedestrianTable.rows.at(-1);
     const band = cbrBand(cbr, "catalog");
     const capacity = Math.max(eea, 500_000);
-    const lowCbrImprovement = cbr < 2 ? 150 : 0;
-    const catalogSubbase = cbr < 2 ? Math.max(100, row.cbr[band] - 30) : row.cbr[band];
+    const lowCbrPair = cbr < 2 ? table55PairFor(eeDay, cbr) : null;
+    const lowCbrImprovement = lowCbrPair?.improvement ?? 0;
+    const catalogSubbase = lowCbrPair?.subbase ?? row.cbr[band];
     alternatives = [
       makeAlternative("Catálogo mínimo", {
         paver: row.paver,
@@ -206,8 +210,8 @@ export function designVehicularOrPedestrian(input) {
         paver: row.paver,
         sandBed: row.sandBed,
         base: row.base,
-        subbase: Math.max(100, row.cbr[band] - 30),
-        improvement: Math.max(150, lowCbrImprovement),
+        subbase: lowCbrPair ? lowCbrPair.subbase : Math.max(100, row.cbr[band] - 30),
+        improvement: lowCbrPair ? lowCbrPair.improvement : 150,
         baseType: "granular",
         demand: eea,
         capacity: capacity * 1.15,
@@ -226,8 +230,8 @@ export function designVehicularOrPedestrian(input) {
     };
     memory.push(`Se usa Tabla 5.8 para categoría ${row.category} y CBR de catálogo ${band}%.`);
     if (cbr < 2) {
-      memory.push("CBR < 2%: se incorpora mejoramiento de subrasante en las alternativas peatonales y se mantiene advertencia de criterio del proyectista.");
-      warnings.push("CBR < 2%: se activa mejoramiento de subrasante tambien en pavimento peatonal.");
+      memory.push(`CBR < 2%: la Tabla 5.8 no cubre esta condicion; se incorpora mejoramiento segun Tabla 5.5 para EE/dia del proyecto (${lowCbrPair.subbase}/${lowCbrPair.improvement} mm subbase/mejoramiento).`);
+      warnings.push("CBR < 2%: se activa mejoramiento de subrasante en pavimento medio, liviano o peatonal usando Tabla 5.5 como criterio complementario.");
     }
   }
 
@@ -270,12 +274,13 @@ export function designPort(input) {
   const damage = Math.pow(wheelLoadKg / 12000, 4) * Math.pow(tirePressureMpa / 0.8, 0.5);
   const sewl = (wheelLoadKg * 9.80665 * dynamicFactor * proximity) / 1000;
   const bgtc = lookupPortThickness(sewl, passes / 1000);
-  const improvement = cbr < 5 ? portImprovementTable.rows.find((row) => cbr <= row.cbr) ?? portImprovementTable.rows.at(-1) : null;
+  const improvement = cbr < 5 ? portImprovementFor(cbr) : null;
   const warnings = validateInputs({ ...input, type: "portuario", cbr, wheelLoadKg });
   const costs = costModel(input);
 
   warnings.push("El diseño por carga estática de contenedores con Ecuación 5.1 queda pendiente de validación manual.");
   if (sewl > 936) warnings.push("La carga equivalente excede el mayor valor tabulado leído en las Tablas 5.11-5.12.");
+  if (cbr < 5) warnings.push("CBR portuario inferior a 5%: se activa subbase granular de 150 mm y mejoramiento de suelo segun Tabla 5.13.");
 
   const common = {
     paver: 100,
@@ -319,6 +324,7 @@ export function designPort(input) {
     ],
     memory: [
       `Tipo de operacion critica declarada: ${input.operationType}. Debe corresponder al equipo o maniobra que gobierna el diseno.`,
+      cbr < 5 ? `CBR < 5%: Tabla 5.13 => mejoramiento ${selected.layers.improvement} mm y subbase granular ${selected.layers.subbase} mm.` : "CBR >= 5%: no se requiere subbase ni mejoramiento de suelo segun Tabla 5.13.",
       `Daño relativo D = (W/12000)^4 x (P/0,8)^0,5 = ${damage.toFixed(2)}.`,
       `SEWL = carga de rueda x factor dinámico x proximidad = ${sewl.toFixed(1)} kN.`,
       `Pasadas de diseño = ${formatNumber(passes)} (${(passes / 1000).toFixed(0)} x 10^3).`,
@@ -419,7 +425,6 @@ export function designAirport(input) {
     traffic: { name: isHeavy ? "Aeronave pesada" : "Aeronave ligera/intermedia", category: input.aircraftName || "Aeronave de diseño" },
     layers: {
       ...selected.layers,
-      improvement: cbr < 10 ? "Definir mejoramiento hasta CBR > 10%" : 0,
       method: "Pre-dimensionamiento aeroportuario - requiere revisión mecanicista final",
       status: "Preverificado con revisión mecanicista requerida.",
     },
@@ -497,6 +502,17 @@ function findByEeDay(table, eeDay) {
 function parseSubbaseImprovement(value) {
   const [subbase, improvement] = String(value).split("/").map(Number);
   return { subbase, improvement };
+}
+
+function table55PairFor(eeDay, cbr) {
+  const bandIndex = subbaseAndImprovementTable.bands.indexOf(cbrBand(cbr));
+  const row = findByEeDay(subbaseAndImprovementTable, eeDay);
+  return parseSubbaseImprovement(row.values[bandIndex]);
+}
+
+function portImprovementFor(cbr) {
+  const conservativeCbr = Math.max(1, Math.min(4, Math.floor(toNumber(cbr))));
+  return portImprovementTable.rows.find((row) => row.cbr === conservativeCbr) ?? portImprovementTable.rows[0];
 }
 
 function highTrafficIndex(eea) {

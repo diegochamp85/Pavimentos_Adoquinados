@@ -85,19 +85,25 @@ outputs/
 
 Calcula ejes equivalentes acumulados, clasifica el nivel de transito y selecciona espesores de adoquin, cama de arena, base, subbase y mejoramiento si aplica.
 
+Para CBR de subrasante menor a 2%, se activa mejoramiento de suelo de acuerdo con la Tabla 5.5, porque la Tabla 5.6 no entrega solucion solo con subbase granular para esa condicion.
+
 ### Peatonal
 
 Permite uso peatonal puro o presencia eventual de vehiculos de mantenimiento/emergencia. Usa catalogos de bajo nivel de solicitacion.
 
-Cuando el CBR de subrasante es menor a 2%, el aplicativo activa mejoramiento de subrasante tambien en pavimentos peatonales y mantiene la advertencia de revision por criterio del proyectista.
+Cuando el CBR de subrasante es menor a 2%, la Tabla 5.8 no cubre directamente esa condicion; el aplicativo activa mejoramiento usando Tabla 5.5 como criterio complementario y mantiene la advertencia de revision por criterio del proyectista.
 
 ### Portuario
 
 Calcula solicitacion equivalente tipo SEWL, dano relativo, pasadas de diseno y alternativas con base granular equivalente o base tratada con cemento.
 
+Para CBR de subrasante menor a 5%, se activa subbase granular de 150 mm y mejoramiento de suelo segun Tabla 5.13. Para CBR igual o superior a 5%, no se requiere mejoramiento por esa tabla.
+
 ### Aeroportuario
 
 Entrega una pre-verificacion estructural basada en carga por rueda, MTOW y salidas equivalentes preliminares. Requiere revision mecanicista final con tablas y ecuaciones aeroportuarias completas.
+
+Para CBR bajo, el manual indica mejorar la subrasante hasta valores superiores al 10%; por ello el aplicativo activa mejoramiento como pre-verificacion y conserva la advertencia de revision mecanicista final.
 
 ## Resultados Generados
 
