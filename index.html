@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Diseño de Pavimentos de Adoquines</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  </head>
+  <body>
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="brandMark">AD</span>
+        <div>
+          <strong>Adoquines</strong>
+          <small>Diseño estructural</small>
+        </div>
+      </div>
+      <nav class="nav">
+        <button class="is-active" data-type="vehicular"><i data-lucide="truck"></i><span>Vehicular</span></button>
+        <button data-type="peatonal"><i data-lucide="footprints"></i><span>Peatonal</span></button>
+        <button data-type="portuario"><i data-lucide="container"></i><span>Portuario</span></button>
+        <button data-type="aeroportuario"><i data-lucide="plane"></i><span>Aeroportuario</span></button>
+        <a id="normativeNav" href="#normativeSection"><i data-lucide="book-open-check"></i><span>Normativa</span></a>
+      </nav>
+      <button id="themeBtn" class="ghost"><i data-lucide="moon-star"></i><span>Modo claro/oscuro</span></button>
+    </aside>
+
+    <main class="app">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Manual ICH 2013</p>
+          <h1 id="moduleTitle">Pavimento vehicular</h1>
+          <p id="moduleSubtitle">Calles urbanas, tránsito bajo, medio y pesado</p>
+        </div>
+        <div class="actions">
+          <button id="calculateBtn" class="primary"><i data-lucide="calculator"></i><span>Calcular diseño</span></button>
+          <button id="pdfBtn"><i data-lucide="file-text"></i><span>Generar reporte PDF</span></button>
+        </div>
+      </header>
+
+      <section class="layout">
+        <form id="formPanel" class="panel formPanel" aria-label="Datos de entrada"></form>
+
+        <section class="panel resultPanel">
+          <div class="panelHead">
+            <div>
+              <p class="eyebrow">Resultado técnico</p>
+              <h2>Estructura recomendada</h2>
+            </div>
+            <span id="statusPill" class="pill">Validado</span>
+          </div>
+          <div id="summaryGrid" class="summaryGrid"></div>
+          <div class="split">
+            <div>
+              <h3>Tabla final de espesores</h3>
+              <table>
+                <thead><tr><th>Capa</th><th>Espesor</th><th>Unidad</th></tr></thead>
+                <tbody id="layersTable"></tbody>
+              </table>
+            </div>
+            <div id="sectionPanel">
+              <h3>Sección transversal</h3>
+              <div id="sectionGraphic" class="sectionGraphic" aria-label="Esquema gráfico de paquete estructural"></div>
+            </div>
+          </div>
+        </section>
+      </section>
+
+      <section class="gridTwo">
+        <article id="verificationPanel" class="panel">
+          <h2>Verificación demanda / capacidad</h2>
+          <div id="verificationContent"></div>
+        </article>
+        <article class="panel">
+          <h2>Alternativas de solución</h2>
+          <div class="tableScroll">
+            <table class="alternativesMatrix">
+              <thead>
+                <tr>
+                  <th>Alternativa</th>
+                  <th>Adoquín</th>
+                  <th>Arena</th>
+                  <th>Base</th>
+                  <th>Subbase</th>
+                  <th>Mejoramiento</th>
+                  <th>Total</th>
+                  <th>Índice</th>
+                  <th>D/C</th>
+                  <th>Estado</th>
+                </tr>
+              </thead>
+              <tbody id="alternativesTable"></tbody>
+            </table>
+          </div>
+        </article>
+      </section>
+
+      <section class="gridTwo">
+        <article class="panel">
+          <h2>Ranking multicriterio</h2>
+          <div class="tableScroll">
+            <table>
+              <thead><tr><th>Alt.</th><th>Margen</th><th>Costo</th><th>Construct.</th><th>Riesgo</th><th>Puntaje</th></tr></thead>
+              <tbody id="rankingTable"></tbody>
+            </table>
+          </div>
+        </article>
+        <article class="panel">
+          <h2>Sensibilidad de diseño</h2>
+          <div class="tableScroll">
+            <table>
+              <thead><tr><th>Escenario</th><th>Demanda</th><th>Alternativa</th><th>D/C</th><th>Estado</th></tr></thead>
+              <tbody id="sensitivityTable"></tbody>
+            </table>
+          </div>
+        </article>
+      </section>
+
+      <section class="gridTwo">
+        <article id="trafficChartPanel" class="panel chartPanel">
+          <h2>Evolución de solicitaciones acumuladas</h2>
+          <div class="chartBox"><canvas id="trafficChart"></canvas></div>
+          <p class="chartNote">Barras: solicitación anual. Líneas: solicitación acumulada, banda de sensibilidad ±10% y umbral de capacidad cuando aplica.</p>
+        </article>
+        <article id="alternativesChartPanel" class="panel chartPanel">
+          <h2>Frontera técnica-económica</h2>
+          <div class="chartBox"><canvas id="alternativesChart"></canvas></div>
+          <p class="chartNote">Eje X: índice económico relativo. Eje Y: demanda/capacidad. Diámetro: espesor total del paquete estructural.</p>
+        </article>
+      </section>
+
+      <section class="gridTwo">
+        <article id="utilizationChartPanel" class="panel chartPanel">
+          <h2>Índice de utilización por alternativa</h2>
+          <div class="chartBox"><canvas id="utilizationChart"></canvas></div>
+          <p class="chartNote">Las barras muestran D/C por alternativa; la línea roja marca el límite de cumplimiento y la línea violeta el costo relativo.</p>
+        </article>
+        <article id="layerChartPanel" class="panel chartPanel">
+          <h2>Composición de espesores por capa</h2>
+          <div class="chartBox"><canvas id="layerChart"></canvas></div>
+          <p class="chartNote">Barras apiladas: espesor por capa. Línea negra: espesor total. Las alternativas A1...An corresponden a la tabla técnica.</p>
+        </article>
+      </section>
+
+      <section class="gridTwo">
+        <article class="panel">
+          <h2>Memoria de cálculo</h2>
+          <ol id="memoryList" class="technicalList"></ol>
+        </article>
+        <article class="panel">
+          <h2>Advertencias y notas</h2>
+          <ul id="warningsList" class="technicalList warningList"></ul>
+        </article>
+      </section>
+
+      <section class="panel">
+        <div class="panelHead">
+          <div>
+            <p class="eyebrow">Catálogo interactivo</p>
+            <h2>Clasificación de tránsito del manual</h2>
+          </div>
+        </div>
+        <div class="tableScroll">
+          <table>
+            <thead><tr><th>Nivel</th><th>Categoría</th><th>EE/día</th><th>Veh/día</th><th>Descripción</th></tr></thead>
+            <tbody id="catalogTable"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="normativeSection" class="panel normativePanel">
+        <div class="panelHead">
+          <div>
+            <p class="eyebrow">Marco normativo y referencias</p>
+            <h2>Normativa y criterios de diseño considerados</h2>
+          </div>
+        </div>
+        <div id="normativeGrid" class="normativeGrid"></div>
+      </section>
+
+      <section class="panel notePanel">
+        <h2>Limitaciones de extracción</h2>
+        <p id="manualNote"></p>
+        <ul id="pendingList" class="technicalList"></ul>
+      </section>
+    </main>
+
+    <script type="module" src="app.js"></script>
+  </body>
+</html>
